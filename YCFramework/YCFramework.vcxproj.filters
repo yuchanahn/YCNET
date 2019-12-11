@@ -15,15 +15,30 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Client.cpp">
+    <ClCompile Include="YCFramework.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="pch.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="YCServer.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="PROP.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="YCServer.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="ThreadSafeQueue.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="ThreadPool.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

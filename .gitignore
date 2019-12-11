@@ -30,3 +30,14 @@
 *.exe
 *.out
 *.app
+*.ipch
+*.db
+.vs/YCNetworkEngine/v16/.suo
+*.db-shm
+*.db-wal
+*.pdb
+*.ilk
+*.log
+*.idb
+*.tlog
+*.txt
