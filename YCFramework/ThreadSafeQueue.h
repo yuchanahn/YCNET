@@ -27,6 +27,12 @@ public:
 		c.notify_one();
 	}
 
+	int size()
+	{
+		std::lock_guard<std::mutex> lock(m);
+		return q.size();
+	}
+
 	// Get the "front"-element.
 	// If the queue is empty, wait till a element is avaiable.
 	T dequeue()

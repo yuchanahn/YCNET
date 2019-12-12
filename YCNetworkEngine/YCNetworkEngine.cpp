@@ -1,168 +1,229 @@
 ﻿#include "pch.h"
+#include "JobManager.h"
 #include "ThreadPool.h"
+#include "YCServer.h"
 
-class Ptest {
+
+
+class P
+{
+	Strand* s;
 public:
-	PROP(int, Hp,
-		{ return _Hp; },
-		{ _Hp = value; }
-	);
+	P(JobManager& jm) { s = new Strand(jm); }
 };
 
 
-class ThreadData
+void Test()
 {
-	int strandID;
-	vector<queue<function<void()>>>& c;
-	vector<queue<function<void()>>>& f;
-	vector<bool>& cj;
-public:
-	ThreadData(vector<queue<function<void()>>>& c_, vector<queue<function<void()>>>& f_, vector<bool>& cj_) : c(c_), f(f_), cj(cj_), strandID(-1)
-	{}
+	WSAData wsaData;
 
-	bool GetNewStrand()
-	{
-		for (int i = 0; i < f.size(); i++)
-		{
-			if (!f[i].empty())
-			{
-				c[i] = std::move(f[i]);
-				if (strandID != -1) cj[strandID] = false;
-				strandID = i;
-				cj[i] = true;
-				return true;
-			}
-		}
-		return false;
-	}
+	HANDLE CP;
 
-	PROP_G(bool, IsTasking, {
-		if (strandID != -1) {
-			if (c[strandID].empty())
-			{
-				cj[strandID] = false;
-				strandID = -1;
-			}
-		}
-		return strandID != -1;
-		});
-	PROP_G(queue<function<void()>>*, Strand, { return  &c[strandID]; });
-};
+	ClientIO* clientIO;
+	ClientHandle* clientHandle;
+
+	SOCKET				mServerSock;
+	SOCKADDR_IN			sAddr;
+
+	vector<std::thread*> wThread;
 
 
-class JobManager
-{
 
-private:
 	mutex mt;
-	std::condition_variable c;
-private:
+	vector<ThreadSafeQueue<ClientIO*>*> mSend_q;
+	vector<ClientData*> mClnts;
 
-	vector<bool> isCurrentJob;
-	vector<queue<function<void()>>> mCurrentJobs;
-	vector<queue<function<void()>>> mFutureJobs;
+	bool StartUp_error = WSAStartup(MAKEWORD(2, 2), &wsaData) == -1;
 
-	bool Stop;
 
-public:
-	JobManager() : Stop(false) 
+	CP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
+
+	SYSTEM_INFO sysInfo;
+	GetSystemInfo(&sysInfo);
+
+	for (int i = 0; i < sysInfo.dwNumberOfProcessors; ++i)
 	{
-		for (int i = 0; i < 5; i++)
-		{
-			mCurrentJobs.push_back(queue <function<void()>>());
-			mFutureJobs.push_back(queue <function<void()>>());
-			isCurrentJob.push_back(false);
-		}
-	}
-	void add_Job(int id, function<void()> f)
-	{
-		{
-			std::unique_lock<std::mutex> lock(mt);
-
-			if (Stop) throw std::runtime_error("enqueue on stopped ThreadPool");
-			
-			if (isCurrentJob[id])	mCurrentJobs[id].push(std::move(f));
-			else					mFutureJobs[id].push(std::move(f));
-		}
-		c.notify_one();
-	}
-	void run()
-	{
-		ThreadData self(mCurrentJobs, mFutureJobs, isCurrentJob);
-		while (true)
-		{
-			function<void()> task;
-
+		wThread.push_back(new std::thread([CP, &mSend_q, &mClnts, &mt]()
 			{
-				std::unique_lock<mutex> lock(mt);
-				c.wait(lock, [&] { return Stop || (self.IsTasking ? true : self.GetNewStrand()); });
-				if (Stop) return;
-				task = std::move((self.Strand)->front());
-				(self.Strand)->pop();
-				lock.unlock();
-				task();
-			}
-		}
+				SOCKET sock;
+				DWORD bytesTrans;
+				ClientHandle* CH;
+				ClientIO* IO;
+
+				while (true)
+				{
+					if (GetQueuedCompletionStatus(CP, &bytesTrans, (PULONG_PTR)&CH, (LPOVERLAPPED*)&IO, INFINITE))
+					{
+						sock = CH->_sock;
+
+						switch (IO->_type)
+						{
+						case IO->Read:
+						{
+							printf("메시지 받음\n");
+
+							if (bytesTrans == 0) { printf("클라이언트 접속 종료.\n"); closesocket(sock); free(CH); free(IO); continue; }
+							ClientData* cd;
+							{
+								std::lock_guard<mutex> lock(mt);
+								mSend_q[IO->clnts->id]->enqueue(IO);
+								cd = IO->clnts;
+							}
+
+							//WSASend(sock, &IO->_wsabuf, 1, NULL, 0, &IO->_overlap, NULL);
+
+
+							IO = (ClientIO*)malloc(sizeof(ClientIO));
+							memset(&IO->_overlap, 0, sizeof(OVERLAPPED));
+							IO->_wsabuf.len = 1024;
+							IO->_wsabuf.buf = IO->_buffer;
+							IO->_type = IO->Read;
+							IO->clnts = cd;
+
+							int flag = 0;
+							WSARecv(sock, &IO->_wsabuf, 1, NULL, (LPDWORD)&flag, &IO->_overlap, NULL);
+						}
+						break;
+						case IO->Write:
+						{
+							printf("전송완료!\n");
+							free(IO);
+						}
+						break;
+						}
+					}
+					else
+					{
+						sock = CH->_sock;
+						if (bytesTrans == 0) { printf("클라이언트 비정상 접속 종료.\n"); closesocket(sock); free(CH); free(IO); continue; }
+					}
+
+
+				}
+			}));
 	}
 
+	thread SendThread(
+		[&] {
+			while (true) {
+				std::lock_guard<mutex> lock(mt);
 
-};
+				for (int i = 0; i < mSend_q.size(); i++)
+				{
+					while (mSend_q[i]->size())
+					{
+						auto IO = mSend_q[i]->dequeue();
+						IO->_type = IO->Write;
+						WSASend(mClnts[i]->sock, &IO->_wsabuf, 1, NULL, 0, &IO->_overlap, NULL);
+					}
+				}
+			}
+		});
+
+	mServerSock = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
+
+	bool SocketCreate_error = mServerSock == INVALID_SOCKET;
+
+	memset(&sAddr, 0, sizeof(sAddr));
+	sAddr.sin_family = AF_INET;
+	sAddr.sin_addr.S_un.S_addr = htonl(INADDR_ANY);
+	sAddr.sin_port = htons(51234);
+
+	bool Bind_error = bind(mServerSock, (SOCKADDR*)&sAddr, sizeof(sAddr)) == -1;
+	bool listen_error = listen(mServerSock, 5);
 
 
+	while (true)
+	{
+		SOCKET			cSock;
+		SOCKADDR_IN		cAddr;
+		int addrLen = sizeof(cAddr);
 
+		cSock = accept(mServerSock, (SOCKADDR*)&cAddr, &addrLen);
+		bool accept_error =
+			cSock == INVALID_SOCKET;
 
+		if (!accept_error)	printf("client connect!\n");
+		else				printf("accept error!\n");
+
+		clientHandle = (ClientHandle*)malloc(sizeof(ClientHandle));
+		clientHandle->_sock = cSock;
+		memcpy(&(clientHandle->_addr), &cAddr, addrLen);
+
+		CreateIoCompletionPort((HANDLE)cSock, CP, (ULONG_PTR)clientHandle, 0);
+
+		// 클라이언트 추가
+		// 지금은 락처리 하지만 Strand에 추가할것임.
+		{
+			std::lock_guard<mutex> lock(mt);
+			mClnts.push_back(new ClientData{ cSock, (int)mClnts.size() });
+			mSend_q.push_back(new ThreadSafeQueue<ClientIO*>());
+		}
+
+		int recvByte = 0, flag = 0;
+
+		clientIO = new ClientIO();
+		memset(&clientIO->_overlap, 0, sizeof(OVERLAPPED));
+		clientIO->_type = clientIO->Read;
+		clientIO->_wsabuf.buf = clientIO->_buffer;
+		clientIO->_wsabuf.len = BUFSIZ;
+		clientIO->clnts = mClnts.back();
+
+		WSARecv(cSock, &(clientIO->_wsabuf), 1, (LPDWORD)&recvByte, (LPDWORD)&flag, &(clientIO->_overlap), NULL);
+	}
+
+	for (auto i : wThread) i->join();
+	SendThread.join();
+
+	closesocket(mServerSock);
+
+	WSACleanup();
+}
 
 int main()
 {
-	JobManager jd;
+	Test();
 
-	vector<thread> t;
-	ThreadPool tp(4);
+	//list<P> pl;
 
-	for (int i = 0; i < 4; i++)
-		t.push_back(thread([&] { jd.run(); }));
+	//JobManager jd;
 
-
- 	atomic<int> n1 = 1;
-	atomic<int> n2 = 1;
-	atomic<int> n3 = 1;
-	atomic<int> n4 = 1;
-	atomic<int> n5 = 1;
-
-
-	atomic<int> n11 = 1;
-	atomic<int> n12 = 1;
-	atomic<int> n13 = 1;
-	atomic<int> n14 = 1;
-	atomic<int> n15 = 1;
-
-	int n6 = 1;
-	int n[54] = { 0 };
+	//vector<thread> t;
+	//ThreadPool tp(4);
 
 
 
-	for (int i = 0; i < 10000; i++)
-	{
-		jd.add_Job(0, [&] { n1++; if (n1 == 10000) printf("1\n"); });
-		jd.add_Job(1, [&] { n2++; if (n2 == 10000) printf("2\n"); });
-		jd.add_Job(2, [&] { n3++; if (n3 == 10000) printf("3\n"); });
-		jd.add_Job(3, [&] { n4++; if (n4 == 10000) printf("4\n"); });
-		jd.add_Job(4, [&] { n5++; if (n5 == 10000) printf("5\n"); });
-	}
-
-	for (auto& i : t) i.join();
-	//Test();
 
 
+	//for (int i = 0; i < 4; i++) t.push_back(thread([&] { jd.run(); }));
 
-	while (1);
+ //	atomic<int> n1 = 1;
+	//atomic<int> n2 = 1;
+	//atomic<int> n3 = 1;
+	//atomic<int> n4 = 1;
+	//atomic<int> n5 = 1;
 
-	//char buffer[1024] = { 0 };
-	//char cBuf[1024] = { 0 };
+	//pl.push_back(P(jd));
+	//pl.push_back(P(jd));
+	//pl.push_back(P(jd));
+	//pl.push_back(P(jd));
+	//pl.push_back(P(jd));
 
-	//std::cin >> buffer;
+	//for (int i = 0; i < 10000; i++)
+	//{
+	//	jd.add_Job(0, [&] { n1++; if (n1 == 10000) printf("1\n"); });
+	//	jd.add_Job(1, [&] { n2++; if (n2 == 10000) printf("2\n"); });
+	//	jd.add_Job(2, [&] { n3++; if (n3 == 10000) printf("3\n"); });
+	//	jd.add_Job(3, [&] { n4++; if (n4 == 10000) printf("4\n"); });
+	//	jd.add_Job(4, [&] { n5++; if (n5 == 10000) printf("5\n"); });
+	//}
 
-	//std::copy(buffer, buffer + strlen(buffer), cBuf);
+	//pl.push_back(P(jd));
+	//pl.push_back(P(jd));
+	//pl.push_back(P(jd));
+	//pl.push_back(P(jd));
+	//pl.push_back(P(jd));
 
-	//printf("%s[len : %lld]\n", cBuf, strlen(buffer));
+	////jd.StopThread();
+	//for (auto& i : t) i.join();
 }

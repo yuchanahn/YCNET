@@ -7,18 +7,23 @@
 #ifndef PCH_H
 #define PCH_H
 
-// 여기에 미리 컴파일하려는 헤더 추가
+#pragma comment(lib, "ws2_32.lib")
+
 #include <iostream>
-#include <thread>
-#include <queue>
+#include <stdlib.h>
+#include <process.h>
+#include <winsock2.h>
+#include <windows.h>
+#include <vector>
+#include <Ws2tcpip.h> 
+#include <mutex>
 #include <map>
 #include <list>
-#include <vector>
+#include <queue>
 #include <functional>
-#include <chrono>
-#include <Windows.h>
-#include <mutex>
 #include <unordered_map>
+#include <atomic>
+//#include "Time.h"
 #include "PROP.h"
 #include "ThreadSafeQueue.h"
 
@@ -30,6 +35,8 @@ using std::queue;
 using std::vector;
 using std::function;
 using std::thread;
+using std::atomic;
+using std::mutex;
 
 class Cri_Lock
 {

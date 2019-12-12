@@ -15,5 +15,3 @@ T _##val;													  \
 void set_##val(T value) setF								  \
 _declspec(property(put = set_##val))	T val    \
 
-
-void Test();
