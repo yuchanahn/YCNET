@@ -26,6 +26,7 @@
 //#include "Time.h"
 #include "PROP.h"
 #include "ThreadSafeQueue.h"
+#include "Vec2.h"
 
 
 using std::unordered_map;
@@ -37,6 +38,7 @@ using std::function;
 using std::thread;
 using std::atomic;
 using std::mutex;
+using std::shared_ptr;
 
 class Cri_Lock
 {

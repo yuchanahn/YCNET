@@ -45,48 +45,60 @@ int main()
 	serveraddr.sin_addr.s_addr = inet_addr("127.0.0.1");
 	serveraddr.sin_port = htons(51234);
 
-	retval = connect(sock, (SOCKADDR*)&serveraddr, sizeof(serveraddr));
-	if (retval == SOCKET_ERROR) err_quit("connect()");
+	while (true)
+	{
+		retval = connect(sock, (SOCKADDR*)&serveraddr, sizeof(serveraddr));
+		if (retval == SOCKET_ERROR) { Sleep(100); continue; }// err_quit("connect()");
+
+		break;
+	}
+
+	std::thread th([&] {
+		char buf2[BUFSIZE + 1];
+		while (1) 
+		{
+			auto received = recv(sock, buf2, BUFSIZE, 0);
+			if (received == SOCKET_ERROR)
+				return SOCKET_ERROR;
+			else if (received == 0)
+				break;
+
+			buf2[received] = '\0';
+			printf("data:%s  len%d \n", buf2, received);
+		}
+		});
 
 	while (1)
 	{
 
 		ZeroMemory(buf, sizeof(buf));
 		printf("send To server : ");
-		if (fgets(buf, BUFSIZE + 1, stdin) == NULL)
-			break;
+
+		int packet_number = 0;
+		int delayT = 0;
+
+		printf("패킷 갯수 : ");
+		std::cin >> packet_number;
+		printf("딜레이 타임 : ");
+		std::cin >> delayT;
+		printf("패킷 내용 : ");
+		std::cin >> buf;
+
+
 
 
 		len = strlen(buf);
-		if (buf[len - 1] == '\n')
-			buf[len - 1] = '\0';
-		if (strlen(buf) == 0)
-			break;
-
-
-		retval = send(sock, buf, strlen(buf), 0);
-		if (retval == SOCKET_ERROR)
+		buf[len] = '\0';
+		
+		for (int i = 0; i < packet_number; i++)
 		{
-			err_display("send()");
-			break;
+			send(sock, buf, len, 0);
+			Sleep(delayT);
 		}
-		printf("recv len %d \n", retval);
-
-
-		retval = recvn(sock, buf, retval, 0);
-		if (retval == SOCKET_ERROR)
-		{
-			err_display("recv()");
-			break;
-		}
-		else if (retval == 0)
-			break;
-
-
-		buf[retval] = '\0';
-		printf("data:%s  len%d \n", buf, retval);
-
 	}
+
+
+	th.join();
 
 	closesocket(sock);
 	WSACleanup();

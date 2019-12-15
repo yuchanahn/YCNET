@@ -37,6 +37,7 @@ using std::function;
 using std::thread;
 using std::atomic;
 using std::mutex;
+using std::shared_ptr;
 
 class Cri_Lock
 {
