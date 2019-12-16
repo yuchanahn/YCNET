@@ -15,6 +15,7 @@
 #include <map>
 #include <list>
 #include <tuple>
+#include "YCPacket.h"
 
 
 #define BUFSIZE 512
@@ -70,7 +71,7 @@ int main()
 
 	while (1)
 	{
-
+		int c;
 		ZeroMemory(buf, sizeof(buf));
 		printf("send To server : ");
 
@@ -81,20 +82,56 @@ int main()
 		std::cin >> packet_number;
 		printf("딜레이 타임 : ");
 		std::cin >> delayT;
-		printf("패킷 내용 : ");
-		std::cin >> buf;
+		printf("패킷 종류 (1:Thransfrom, 2:Player, 3:Ping)\n");
+		std::cin >> c;
+		/*
+		HeaderTail ht;
+		if (c == 1)
+		{
+			pTransfromData Tr{};
+			Tr.data.x = -3;
+			Tr.data.y = 3;
 
+			char* buf2;
+			int len2;
 
+			YCPacketBuilder::pack<packTransfromData, pTransfromData>(Tr, buf2, len2);
 
+			ht = get_header_tail(buf2, len2);
+		}
+		else if(c == 2)
+		{
+			pPlayerData playerTh{ };
+			playerTh.data.Hp = 100;
+			playerTh.data.Mp = 10;
 
-		len = strlen(buf);
-		buf[len] = '\0';
+			char* buf;
+			int len;
+
+			YCPacketBuilder::pack<packPlayerData, pPlayerData>(playerTh, buf, len);
+			ht = get_header_tail(buf, len);
+		}
+		else if(c == 3)
+		{
+			pPing mping { };
+			mping.data.time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
+			char* buf;
+			int len;
+
+			YCPacketBuilder::pack<packPing, pPing>(mping, buf, len);
+			ht = get_header_tail(buf, len);
+		}
+
+		
+		len = ht.len;
 		
 		for (int i = 0; i < packet_number; i++)
 		{
-			send(sock, buf, len, 0);
+			send(sock, ht.data, len, 0);
 			Sleep(delayT);
 		}
+		*/
 	}
 
 

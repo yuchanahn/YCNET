@@ -2,12 +2,12 @@
 #include "JobManager.h"
 #include "ThreadPool.h"
 #include "YCServer.h"
-#include "YCPacket.h"
+//#include "YCPacket.h"
 
 int main()
 {
-	i();
+	//i();
 
-	//YCServer s(51234);
-	//s.Srv_Start();
+	YCServer s(51234);
+	s.Srv_Start();
 }

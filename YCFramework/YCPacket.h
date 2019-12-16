@@ -8,15 +8,15 @@ enum ePacket_Type : int
 	base,
 	transfrom,
 	player,
+	ping,
 };
-
+/*
 #define Pack(T,packetT)																											\
 struct p##T																														\
 {																																\
-	static ePacket_Type t;																										\
+	ePacket_Type t = packetT;																									\
 	T data;																														\
 };																																\
-ePacket_Type p##T::t= packetT;																									\
 union pack##T																													\
 {																																\
 	pack##T(){ memset( this, 0, sizeof( pack##T ) ); };																			\
@@ -24,7 +24,7 @@ union pack##T																													\
 	p##T packet;																												\
 	char raw[sizeof(p##T)];																										\
 };			
-
+*/
 union charCenvrt
 {
 	int integer;
@@ -40,21 +40,8 @@ struct HeaderTail
 
 // Header : Tail을 포함한 한 패킷의 길이 데이터.
 // Tail	  : UnPack 할 수 있는 데이터.
-HeaderTail get_header_tail(char* data, int len)
-{
-	HeaderTail raw_packet;
-	raw_packet.data = new char[sizeof(int) + len];
-	raw_packet.len = sizeof(int) + len;
+HeaderTail get_header_tail(char* data, int len);
 
-	charCenvrt cc;
-	cc.integer = raw_packet.len;
-
-
-	std::copy(cc.char_integer, cc.char_integer + sizeof(int), raw_packet.data);
-	std::copy(data, data+len, &raw_packet.data[sizeof(int)]);
-	
-	return raw_packet;
-}
 
 struct RawData
 {
@@ -67,52 +54,19 @@ struct RawData
 	int lastDataLen;
 };
 
-RawData get_header_tail_to_data(char* data, int len)
-{
-	if (len < sizeof(int)) return RawData{ };
-
-	RawData d {};
-	int ReadDataLen = 0;
-
-
-	charCenvrt cc;
-	std::copy(data, data + sizeof(int), cc.char_integer);						// 헤더에 써있는 길이.
-	
-	ReadDataLen = cc.integer;
-	
-	if(len < ReadDataLen) return RawData{ };
-
-	d.dataLen = ReadDataLen - sizeof(int);									// 헤더의 길이만큼 빼주기.
-	d.data = new char[d.dataLen];
-	std::copy(data + sizeof(int), data + (d.dataLen + sizeof(int)), d.data);
-
-	if ((len - ReadDataLen) > 0) 
-	{
-		d.lastDataLen = len - ReadDataLen;
-		d.lastData = new char[d.lastDataLen];
-		std::copy(data + ReadDataLen, data + ReadDataLen + d.lastDataLen, d.lastData);
-	}
-	else
-	{
-		d.lastDataLen = 0;
-	}
-	char bb[12];
-	std::copy(data, data + 12, bb);
-	d.success = true;
-
-	return d;
-}
+RawData get_header_tail_to_data(char* data, int len);
 
 
 
 
 
+/*
 struct Base
 {
 };
 Pack(Base,base)
-
-
+*/
+/*
 class YCPacketBuilder
 {
 	YCPacketBuilder() {}
@@ -142,9 +96,10 @@ public:
 };
 
 
+*/
 
 
-
+/*
 struct TransfromData
 {
 	int x;
@@ -162,19 +117,50 @@ struct PlayerData
 	int Cri;
 	int Int;
 };
+Pack(PlayerData, player)
 
+
+
+struct Ping
+{
+	long long time;
+};
+Pack(Ping, ping)
+*/
+
+
+int Read(char*& data, int& len);
+
+
+
+/*
 void i()
 {
-	pTransfromData playerTh { };
-	playerTh.data.x = 11;
-	playerTh.data.y = 99;
+	pPlayerData playerTh { };
+	playerTh.data.Hp = 100;
+	playerTh.data.Mp = 10;
 
 	char* buf;
 	int len;
 
-	YCPacketBuilder::pack<packTransfromData, pTransfromData>(playerTh, buf, len);
+	pTransfromData Tr{};
+	Tr.data.x = -3;
+	Tr.data.y = 3;
 
-	auto Fainal_packet = get_header_tail(buf, len);
+	char* buf2;
+	int len2;
+
+	YCPacketBuilder::pack<packPlayerData, pPlayerData>(playerTh, buf, len);
+
+	YCPacketBuilder::pack<packTransfromData, pTransfromData>(Tr, buf2, len2);
+
+	auto Fainal_packet1 = get_header_tail(buf, len);
+	auto Fainal_packet2 = get_header_tail(buf2, len2);
+	int Fainal_Len = Fainal_packet1.len + Fainal_packet2.len;
+
+	char* Fainal_packet = new char[Fainal_Len];
+	std::copy(Fainal_packet1.data, Fainal_packet1.data + Fainal_packet1.len, Fainal_packet);
+	std::copy(Fainal_packet2.data, Fainal_packet2.data + Fainal_packet2.len, &Fainal_packet[Fainal_packet1.len]);
 
 
 	bool read = false;
@@ -187,30 +173,10 @@ void i()
 		test_i++;
 		if		(test_i == 1)	cur_read_len += sizeof(int) - 1;        // 1 - test
 		else if (test_i == 2)	cur_read_len += len / 2;                // 2 - test
-		else if (test_i == 3)	cur_read_len += len;					// 3 - test
-		
-		auto obj = get_header_tail_to_data(Fainal_packet.data, cur_read_len);
-		if (obj.success)
-		{
-			auto p = ((pTransfromData*)(&(obj.data)));
-			printf("x:%d, y:%d [packet len : %d]\n", p->data.x, p->data.y, obj.dataLen);
-			delete obj.data;
-
-			read = true;
-			delete Fainal_packet.data;
-			
-			if (obj.lastData > 0) 
-			{
-				Fainal_packet.data = obj.lastData;
-				Fainal_packet.len = obj.lastDataLen;
-			}
-			else
-			{
-				Fainal_packet.data = nullptr;
-				Fainal_packet.len = 0; 
-				cur_read_len = 0;
-			}
-		}
+		else if (test_i == 3)	cur_read_len += len + len2;				// 3 - test
+	
+		Read(Fainal_packet, cur_read_len);
 	}
 
 }
+*/
