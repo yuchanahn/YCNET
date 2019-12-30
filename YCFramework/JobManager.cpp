@@ -76,7 +76,7 @@ void Strand::Init()
 	id = jm.get_strand();
 }
 
-void Strand::push(function<void()> job)
+void Strand::Add(function<void()> job)
 {
 	jm.add_Job(id, job);
 }

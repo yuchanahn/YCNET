@@ -155,35 +155,33 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="GameObject.cpp" />
+    <ClCompile Include="IMemoryPoolObject.cpp" />
     <ClCompile Include="JobManager.cpp" />
-    <ClCompile Include="Mob.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Framework.cpp" />
     <ClCompile Include="Time.cpp" />
-    <ClCompile Include="UserBase.cpp" />
+    <ClCompile Include="YCMemoryPool.cpp" />
     <ClCompile Include="YCPacket.cpp" />
     <ClCompile Include="YCServer.cpp" />
+    <ClCompile Include="YCSession.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Base_generated.h" />
-    <ClInclude Include="GameObject.h" />
+    <ClInclude Include="IMemoryPoolObject.h" />
     <ClInclude Include="JobManager.h" />
-    <ClInclude Include="Mob.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="PROP.h" />
     <ClInclude Include="ThreadPool.h" />
     <ClInclude Include="ThreadSafeQueue.h" />
     <ClInclude Include="Time.h" />
-    <ClInclude Include="UserBase.h" />
     <ClInclude Include="Vec2.h" />
+    <ClInclude Include="YCMemoryPool.h" />
     <ClInclude Include="YCPacket.h" />
     <ClInclude Include="YCServer.h" />
+    <ClInclude Include="YCSession.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

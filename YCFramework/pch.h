@@ -23,11 +23,12 @@
 #include <functional>
 #include <unordered_map>
 #include <atomic>
-//#include "Time.h"
+#include <stack>
 #include "PROP.h"
 #include "ThreadSafeQueue.h"
 #include "Vec2.h"
 #include "Time.h"
+#include "IMemoryPoolObject.h"
 
 
 using std::unordered_map;
@@ -40,6 +41,8 @@ using std::thread;
 using std::atomic;
 using std::mutex;
 using std::shared_ptr;
+using std::stack;
+using byte = unsigned char;
 
 class Cri_Lock
 {

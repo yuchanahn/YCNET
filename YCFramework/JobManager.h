@@ -65,5 +65,5 @@ public:
 	{
 		Init();
 	}
-	void push(function<void()> job);
+	void Add(function<void()> job);
 };

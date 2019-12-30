@@ -18,7 +18,7 @@
 #include "YCPacket.h"
 
 
-#define BUFSIZE 512
+#define BUFSIZE 1024
 
 
 void err_display(const char* msg);
