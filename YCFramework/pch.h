@@ -9,26 +9,36 @@
 
 #pragma comment(lib, "ws2_32.lib")
 
-#include <iostream>
-#include <stdlib.h>
-#include <process.h>
-#include <winsock2.h>
-#include <windows.h>
+#include <range/v3/all.hpp>
 #include <vector>
-#include <Ws2tcpip.h> 
-#include <mutex>
+#include <stack>
+#include <iostream>
+#include <atomic>
+#include <thread>
+#include <chrono>
+#include <algorithm>
+#include <string>
+#include <vector>
+#include <numeric>
+#include <unordered_map>
 #include <map>
-#include <list>
 #include <queue>
 #include <functional>
-#include <unordered_map>
-#include <atomic>
-#include <stack>
+#include <memory> 
+#include <Ws2tcpip.h> 
+#include <winsock2.h>
+#define _USE_MATH_DEFINES
+#include <math.h>
+
 #include "PROP.h"
 #include "ThreadSafeQueue.h"
 #include "Vec2.h"
-#include "Time.h"
-#include "IMemoryPoolObject.h"
+#include "YCTime.h"
+#include "YCUtil.h"
+#include "IBehavior.h"
+#include "YC_LOG.h"
+#include "Functional.h"
+#include "YCStack.h"
 
 
 using std::unordered_map;
@@ -42,27 +52,11 @@ using std::atomic;
 using std::mutex;
 using std::shared_ptr;
 using std::stack;
+using std::string;
+
+using namespace std::chrono;
 using byte = unsigned char;
 
-class Cri_Lock
-{
-	CRITICAL_SECTION* mCs;
-public:
-	Cri_Lock(CRITICAL_SECTION* cs)
-	{
-		mCs = cs;
-		EnterCriticalSection(mCs);
-	}
-	~Cri_Lock()
-	{
-		LeaveCriticalSection(mCs);
-	}
-	operator bool()
-	{
-		return mCs != nullptr;
-	}
-};
 
-#define Lock(cs) if (Cri_Lock lock{cs})
 
 #endif //PCH_H

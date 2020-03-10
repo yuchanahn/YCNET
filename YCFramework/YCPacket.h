@@ -2,181 +2,167 @@
 #define _SCL_SECURE_NO_WARNINGS
 #include <algorithm>
 #include <memory>
+#include <unordered_map>
+#include <list>
+#include <functional>
 
-enum ePacket_Type : int
+#pragma pack(push, 1)
+union int_to_byte
 {
-	base,
-	transfrom,
-	player,
-	ping,
+	int i;
+	char b[sizeof(int)];
 };
-/*
-#define Pack(T,packetT)																											\
-struct p##T																														\
-{																																\
-	ePacket_Type t = packetT;																									\
-	T data;																														\
-};																																\
-union pack##T																													\
-{																																\
-	pack##T(){ memset( this, 0, sizeof( pack##T ) ); };																			\
-	~pack##T(){}																												\
-	p##T packet;																												\
-	char raw[sizeof(p##T)];																										\
-};			
-*/
-union charCenvrt
+union size_t_to_byte
 {
-	int integer;
-	char char_integer[sizeof(int)];
+	size_t i;
+	char b[sizeof(size_t)];
 };
-
-
-struct HeaderTail
+class PacketEvent;
+template <typename T>
+union packet_t
 {
-	char* data;
-	int len;
-};
-
-// Header : Tail을 포함한 한 패킷의 길이 데이터.
-// Tail	  : UnPack 할 수 있는 데이터.
-HeaderTail get_header_tail(char* data, int len);
-
-
-struct RawData
-{
-	bool success;
-	
-	char* data;
-	int dataLen;
-
-	char* lastData;
-	int lastDataLen;
-};
-
-RawData get_header_tail_to_data(char* data, int len);
-
-
-
-
-
-/*
-struct Base
-{
-};
-Pack(Base,base)
-*/
-/*
-class YCPacketBuilder
-{
-	YCPacketBuilder() {}
+	packet_t() { memset(this, 0, sizeof(packet_t<T>)); }
+	T value;
+private:
+	unsigned char byte_data[sizeof(T)];
 public:
-	template <class T, class T2>
-	static void pack(T2 data, char*& byte_data, int& len)
+	const unsigned char* ToByte()
 	{
-		T pData;
-		len = sizeof(T);
-		pData.packet = data;
-		byte_data = new char[len];
-		std::copy(pData.raw, pData.raw + len, byte_data);
+		return byte_data;
 	}
 
-	template <class T, class T2>
-	static T2 unpack(char* data, int len)
+	int pack(unsigned char* buffer)
 	{
-		T p;
-		std::copy(data, data+len, p.raw);
-		return p.packet;
+		auto curBuffer = buffer;
+		int_to_byte i_to_b;
+		i_to_b.i = sizeof(int) + sizeof(int) + sizeof(T);
+
+		std::copy(i_to_b.b, i_to_b.b + sizeof(int), curBuffer);
+		curBuffer += sizeof(int);
+
+		int_to_byte s_to_b;
+		s_to_b.i = PacketEvent::packet_events[typeid(T).hash_code()];
+		std::copy(s_to_b.b, s_to_b.b + sizeof(int), curBuffer);
+		curBuffer += sizeof(int);
+		std::copy(ToByte(), ToByte() + sizeof(T), curBuffer);
+		return i_to_b.i;
+	}
+};
+#pragma pack(pop)
+
+static class PacketEvent
+{
+
+	static std::unordered_map<int, std::list<std::function<void(void*, int)>>> event;
+public:
+	static std::unordered_map<size_t, int> packet_events;
+	template <typename T, typename F>
+	static void bind_event(F f)
+	{
+		event[packet_events[typeid(T).hash_code()]].push_back([f](void* d, int id) { f((T*)d, id); });
 	}
 
-	static int GetPacketType(char* data)
+	template <typename T>
+	static void signal_event(int id, T p)
 	{
-		return unpack<packBase, pBase>(data, sizeof(packBase)).t;
+		for (auto ev : event[id])
+		{
+			ev(p, -1);
+		}
+	}
+
+	template <typename T>
+	static void signal_event(int id, T p, int user_id)
+	{
+		for (auto ev : event[id])
+		{
+			ev(p, user_id);
+		}
 	}
 };
 
 
-*/
-
-
-/*
-struct TransfromData
+class YC_Packet_ReadManager
 {
-	int x;
-	int y;
-};
-Pack(TransfromData, transfrom)
+	unsigned char buf[2048]; // 자기 저장용 버퍼.
+	int i = 0;		// 버퍼 현재 인덱스.
+	int _size = -1;
 
-struct PlayerData
-{
-	int Hp;
-	int Mp;
-	TransfromData Tr;
-	int Str;
-	int Dex;
-	int Cri;
-	int Int;
-};
-Pack(PlayerData, player)
-
-
-
-struct Ping
-{
-	long long time;
-};
-Pack(Ping, ping)
-*/
-
-
-int Read(char*& data, int& len);
-
-
-
-/*
-void i()
-{
-	pPlayerData playerTh { };
-	playerTh.data.Hp = 100;
-	playerTh.data.Mp = 10;
-
-	char* buf;
-	int len;
-
-	pTransfromData Tr{};
-	Tr.data.x = -3;
-	Tr.data.y = 3;
-
-	char* buf2;
-	int len2;
-
-	YCPacketBuilder::pack<packPlayerData, pPlayerData>(playerTh, buf, len);
-
-	YCPacketBuilder::pack<packTransfromData, pTransfromData>(Tr, buf2, len2);
-
-	auto Fainal_packet1 = get_header_tail(buf, len);
-	auto Fainal_packet2 = get_header_tail(buf2, len2);
-	int Fainal_Len = Fainal_packet1.len + Fainal_packet2.len;
-
-	char* Fainal_packet = new char[Fainal_Len];
-	std::copy(Fainal_packet1.data, Fainal_packet1.data + Fainal_packet1.len, Fainal_packet);
-	std::copy(Fainal_packet2.data, Fainal_packet2.data + Fainal_packet2.len, &Fainal_packet[Fainal_packet1.len]);
-
-
-	bool read = false;
-	int cur_read_len = 0; // 지금까지 읽어드린 길이.
-
-
-	int test_i = 0;
-	while (!read)
+public:
+	void read(unsigned char* r_buf, int r_size, int id = -1)
 	{
-		test_i++;
-		if		(test_i == 1)	cur_read_len += sizeof(int) - 1;        // 1 - test
-		else if (test_i == 2)	cur_read_len += len / 2;                // 2 - test
-		else if (test_i == 3)	cur_read_len += len + len2;				// 3 - test
-	
-		Read(Fainal_packet, cur_read_len);
+		bool trigger = false;
+
+		std::copy(r_buf + i, r_buf + i + r_size, &buf[i]);
+
+		if ((i += r_size) < 4)
+		{
+			return;
+		}
+		if (_size == -1)
+		{
+			int_to_byte i_to_b;
+			std::copy(buf, buf + sizeof(int), i_to_b.b);
+			_size = i_to_b.i;
+		}
+
+		if (i >= _size)
+		{
+			int_to_byte i_to_b;
+			std::copy(buf + sizeof(int), buf + sizeof(int) + sizeof(int), i_to_b.b);
+			auto _id = i_to_b.i;
+
+			if(id != -1)
+				PacketEvent::signal_event(_id, buf + sizeof(int) + sizeof(int), id);
+			else
+				PacketEvent::signal_event(_id, buf + sizeof(int) + sizeof(int));
+
+			if (i > _size)
+			{
+				std::copy(&buf[_size], (&buf[_size]) + ((size_t)i - _size), buf);
+				trigger = true;
+			}
+			i = i - _size;
+			_size = -1;
+		}
+		if (trigger)
+		{
+			auto start_idx = i;
+			i = 0;
+			if (id == -1)
+				read(buf, start_idx);
+			else
+				read(buf, start_idx, id);
+		}
+
 	}
 
-}
-*/
+};
+class yc_template_packet_to_row
+{
+	size_t hashcode = -1;
+	friend class ioev;
+public:
+	template<int i>
+	void To()
+	{
+		PacketEvent::packet_events[hashcode] = i;
+	}
+};
+class ioev
+{
+public:
+	template<typename T>
+	static yc_template_packet_to_row Map()
+	{
+		yc_template_packet_to_row p;
+		p.hashcode = typeid(T).hash_code();
+		return p;
+	}
+
+	template<typename T, typename F>
+	static void Signal(F f)
+	{
+		PacketEvent::bind_event<T>(f);
+	}
+};
