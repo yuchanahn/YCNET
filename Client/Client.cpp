@@ -30,11 +30,11 @@ int main()
 			int rt = master.read_packet();
 			if (rt == -1)
 			{
-				//yc::log("error");
+				yc::log("error");
 			}
 			else if (rt == 0)
 			{
-				//yc::log("disconnect!");
+				yc::log("disconnect!");
 			}
 		}
 	});
