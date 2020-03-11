@@ -127,17 +127,7 @@ void YCServer::Update()
 {
 	YCTime::UpdateDeltaTime();
 
-	static float dt = 0;
-	static size_t FPS = 0;
-
-	dt += YCTime::deltaTime;
-	FPS++;
-	if (dt > 1)
-	{
-		dt = 0;
-		yc::log("fps : {}", FPS);
-		FPS = 0;
-	}
+	loop();
 
 	Job->AddLate([this] { Update(); });
 }

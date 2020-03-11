@@ -44,7 +44,7 @@ int main()
 	while (1)
 	{
 		test_t t;
-		std::cin >> t.c;
+		std::cin.getline(t.c, sizeof(t.c));
 		send_manager.send(t);
 	}
 

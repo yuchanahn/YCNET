@@ -21,9 +21,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="pch.cpp">
-      <Filter>PCH</Filter>
-    </ClCompile>
     <ClCompile Include="YCServer.cpp">
       <Filter>TCP_Server</Filter>
     </ClCompile>
@@ -39,11 +36,11 @@
     <ClCompile Include="YCClient.cpp">
       <Filter>TCP_Client</Filter>
     </ClCompile>
+    <ClCompile Include="pch.cpp">
+      <Filter>PCH</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="pch.h">
-      <Filter>PCH</Filter>
-    </ClInclude>
     <ClInclude Include="YCServer.h">
       <Filter>TCP_Server</Filter>
     </ClInclude>
@@ -76,6 +73,9 @@
     <ClInclude Include="YCSend.h" />
     <ClInclude Include="YCClient.h">
       <Filter>TCP_Client</Filter>
+    </ClInclude>
+    <ClInclude Include="pch.h">
+      <Filter>PCH</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

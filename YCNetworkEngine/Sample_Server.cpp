@@ -6,9 +6,9 @@
 #include "YCServer.h"
 #include "YCPacket.h"
 #include "YCSync.h"
+#include "YCTime.h"
 
-
-
+#include <regex>
 
 #pragma pack(push, 1)
 struct test_t
@@ -20,50 +20,68 @@ struct test_t
 struct sesstion_t
 {
 	int id;
+	std::string name;
 };
 
 int main()
 {
+#pragma region PACKET_SET
+	ioev::Map<test_t>().To<0>();
+#pragma endregion
+	// this hash_map, Have to used in Server_Sync!!!
 	std::unordered_map<int, sesstion_t> clients;
 
-	ioev::Map<test_t>().To<0>();
+	
 
-
-	YCServer s(51234,
+	YCServer server(51234,
 		[&](int id) {
-			clients[id] = sesstion_t { id };
+			clients[id] = sesstion_t{ id, fmt::format("client{}", id) };
 			yc::log("connect client! [{}]", id);
 		},
 		[&](int id) {
 			clients.erase(id);
 			yc::log("disconnect client! [{}]", id);
+		},
+		[]
+		{
+			static float dt = 0;
+			static size_t FPS = 0;
+
+			dt += YCTime::deltaTime;
+			FPS++;
+			if (dt > 1)
+			{
+				dt = 0;
+				yc::log("fps : {}", FPS);
+				FPS = 0;
+			}
+		});
+
+	ioev::Signal<test_t>([&server, &clients](test_t* d, int id) {
+		std::regex re("-n (.*)");
+		std::smatch m;
+		std::string s = d->c;
+		if (std::regex_match(s, m, re))
+		{
+			if(m.size() > 0) clients[id].name.assign(m[1]);
+			return;
 		}
-	);
+		server.get_server_sync()->Add([&server, &clients, t = *d, ID = id] {
+			auto str = fmt::format("{} : {}", clients[ID].name, t.c);
 
-	ioev::Signal<test_t>([&s, &clients](test_t* d, int id) {
-		yc::log("[client {}] : {}", id, d->c);
-
-		auto t = *d;
-		auto ID = id;
-		s.Job->Add([&s, &clients, t, ID] {
-			auto str = fmt::format("client {} : {}", ID, t.c);
-			
 			char* c = (char*)t.c;
 			str.copy(c, str.size());
 			c[str.size()] = '\0';
 
-
 			for (auto& i : clients)
 			{
-				s.Send(i.first, &t);
+				server.Send(i.first, &t);
 			}
 		});
 	});
 
 
-	s.Srv_Start();
-
-
+	server.Srv_Start();
 
 	return 0;
 }

@@ -137,7 +137,7 @@ private:
 
 	std::function<void(int)> connect_ev;
 	std::function<void(int)> disconnect_ev;
-
+	std::function<void()> loop;
 private:
 	void Init();
 
@@ -146,16 +146,30 @@ public:
 	Strand* Job;
 
 public:
-	YCServer(int port, std::function<void(int)> c, std::function<void(int)> d) :
+	YCServer(int port,
+		std::function<void(int)> c,
+		std::function<void(int)> d,
+		std::function<void()> l) :
 		PORT(port),
 		connect_ev(c),
-		disconnect_ev(d)
+		disconnect_ev(d),
+		loop(l)
 	{ Init(); }
 	~YCServer();
 
 
 	void Srv_Start();
 	void Update();
+
+	Strand* get_sync(int id)
+	{
+		if (mSessions.size() <= id) assert("클라이언트 ID가 잘못됨!");
+		return mSessions[id].job;
+	}
+	Strand* get_server_sync()
+	{
+		return Job;
+	}
 
 	template <typename T>
 	void Send(int id, T* p)
