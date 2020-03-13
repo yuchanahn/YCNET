@@ -13,14 +13,14 @@
 #pragma pack(push, 1)
 struct test_t
 {
-	char c[100];
+	wchar_t c[100];
 };
 #pragma pack(pop)
 
 struct sesstion_t
 {
 	int id;
-	std::string name;
+	std::wstring name;
 };
 
 int main()
@@ -31,11 +31,9 @@ int main()
 	// this hash_map, Have to used in Server_Sync!!!
 	std::unordered_map<int, sesstion_t> clients;
 
-	
-
 	YCServer server(51234,
 		[&](int id) {
-			clients[id] = sesstion_t{ id, fmt::format("client{}", id) };
+			clients[id] = sesstion_t{ id, fmt::format(L"client{}", id) };
 			yc::log("connect client! [{}]", id);
 		},
 		[&](int id) {
@@ -58,18 +56,18 @@ int main()
 		});
 
 	ioev::Signal<test_t>([&server, &clients](test_t* d, int id) {
-		std::regex re("-n (.*)");
-		std::smatch m;
-		std::string s = d->c;
+		std::wregex re(L"-n (.*)");
+		std::wsmatch m;
+		std::wstring s = d->c;
 		if (std::regex_match(s, m, re))
 		{
 			if(m.size() > 0) clients[id].name.assign(m[1]);
 			return;
 		}
 		server.get_server_sync()->Add([&server, &clients, t = *d, ID = id] {
-			auto str = fmt::format("{} : {}", clients[ID].name, t.c);
+			auto str = fmt::format(L"{} : {}", clients[ID].name, t.c);
 
-			char* c = (char*)t.c;
+			wchar_t* c = (wchar_t*)t.c;
 			str.copy(c, str.size());
 			c[str.size()] = '\0';
 
